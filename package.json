@@ -1,0 +1,30 @@
+{
+  "name": "music-attendance",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "tsc -b --pretty false",
+    "db:deploy": "node scripts/deploy-database.mjs",
+    "db:seed-admin": "node scripts/seed-admin.mjs"
+  },
+  "dependencies": {
+    "@insforge/sdk": "^1.5.2",
+    "@simplewebauthn/browser": "^13.2.0",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "read-excel-file": "^9.3.10",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}

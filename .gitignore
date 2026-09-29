@@ -1,0 +1,30 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf
+
+# Test/temp artifacts
+*.tmp
+dummy.*
+.google-sync-secret*
+
+# Dev scratch scripts (contain internal URLs / one-off patches)
+scratch/
