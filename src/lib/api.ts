@@ -647,3 +647,192 @@ export async function updateGeofence(input: Pick<GeofenceConfig, 'label' | 'lati
 export function errorMessage(error: unknown, fallback?: string) {
   return readableError(error, fallback);
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// سجل العمليات وسجل الدخول — للمشرف العام فقط (الدوال تتحقق من الصلاحية)
+// ══════════════════════════════════════════════════════════════════════
+
+export type AuditLogRow = {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  actor_id: string | null;
+  actor_name: string | null;
+  actor_email: string | null;
+  actor_kind: 'admin' | 'student' | 'system';
+  metadata: Record<string, unknown>;
+  created_at: string;
+  total_count: number;
+};
+
+export type AuditFilters = {
+  search?: string;
+  action?: string;
+  entityType?: string;
+  actorId?: string;
+  from?: string | null;
+  to?: string | null;
+  limit?: number;
+  offset?: number;
+};
+
+export async function getAdminAuditLogs(filters: AuditFilters = {}) {
+  const { data, error } = await database.rpc('admin_audit_logs', {
+    p_search: filters.search?.trim() || null,
+    p_action: filters.action || null,
+    p_entity_type: filters.entityType || null,
+    p_actor_id: filters.actorId || null,
+    p_from: filters.from || null,
+    p_to: filters.to || null,
+    p_limit: filters.limit ?? 50,
+    p_offset: filters.offset ?? 0,
+  });
+  return { data: (data as AuditLogRow[] | null) ?? [], error };
+}
+
+export type LoginEventRow = {
+  id: string;
+  user_id: string | null;
+  identity: string | null;
+  role: 'admin' | 'student' | 'unknown';
+  status: 'success' | 'failed';
+  method: string;
+  failure_reason: string | null;
+  ip: string | null;
+  forwarded_for: string | null;
+  user_agent: string | null;
+  platform: string | null;
+  language: string | null;
+  timezone: string | null;
+  screen: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  accuracy_m: number | null;
+  geo_source: 'gps' | 'ip' | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  country_code: string | null;
+  org: string | null;
+  display_name: string | null;
+  email: string | null;
+  created_at: string;
+  total_count: number;
+};
+
+export type LoginFilters = {
+  search?: string;
+  status?: string;
+  role?: string;
+  method?: string;
+  userId?: string;
+  from?: string | null;
+  to?: string | null;
+  limit?: number;
+  offset?: number;
+};
+
+export async function getAdminLoginEvents(filters: LoginFilters = {}) {
+  const { data, error } = await database.rpc('admin_login_events', {
+    p_search: filters.search?.trim() || null,
+    p_status: filters.status || null,
+    p_role: filters.role || null,
+    p_method: filters.method || null,
+    p_user_id: filters.userId || null,
+    p_from: filters.from || null,
+    p_to: filters.to || null,
+    p_limit: filters.limit ?? 50,
+    p_offset: filters.offset ?? 0,
+  });
+  return { data: (data as LoginEventRow[] | null) ?? [], error };
+}
+
+export type AuditFacets = {
+  actions: Array<{ value: string; count: number }>;
+  entities: Array<{ value: string; count: number }>;
+  actors: Array<{ id: string; name: string; kind: string; count: number }>;
+};
+
+export async function getAdminAuditFacets() {
+  const { data, error } = await database.rpc('admin_audit_facets');
+  return { data: (data as AuditFacets | null) ?? { actions: [], entities: [], actors: [] }, error };
+}
+
+export type SecuritySummary = {
+  logins_24h: number;
+  failed_24h: number;
+  ips_24h: number;
+  devices_24h: number;
+  gps_24h: number;
+  admins_24h: number;
+  students_24h: number;
+  actions_24h: number;
+  actions_7d: number;
+  total_logins: number;
+  total_failed: number;
+  last_login_at: string | null;
+  last_failed_at: string | null;
+};
+
+export async function getAdminSecuritySummary() {
+  const { data, error } = await database.rpc('admin_security_summary');
+  return { data: (data as SecuritySummary | null) ?? null, error };
+}
+
+/** يقرأ الموقع بصمت قدر الإمكان؛ لا يوقف تسجيل الدخول إن رفض المستخدم أو فشل الجهاز. */
+async function readLoginGeo(): Promise<{ latitude: number; longitude: number; accuracy?: number } | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return null;
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (value: { latitude: number; longitude: number; accuracy?: number } | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const timer = window.setTimeout(() => done(null), 6000);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => { window.clearTimeout(timer); done({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }); },
+      () => { window.clearTimeout(timer); done(null); },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 },
+    );
+  });
+}
+
+function loginDeviceInfo() {
+  if (typeof navigator === 'undefined') return {};
+  return {
+    platform: navigator.platform || null,
+    language: navigator.language || null,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+    screen: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : null,
+  };
+}
+
+export type LoginEventInput = {
+  status: 'success' | 'failed';
+  identity?: string | null;
+  userId?: string | null;
+  method?: 'password' | 'register' | 'passkey' | 'google';
+  failureReason?: string | null;
+  withLocation?: boolean;
+};
+
+/** يسجّل حدث الدخول في الخادم (الوقت/الجهاز/الشبكة/الموقع) — لا يعطّل الدخول إن فشل. */
+export async function logLoginEvent(input: LoginEventInput) {
+  const geo = input.withLocation === false ? null : await readLoginGeo();
+  try {
+    return await insforge.functions.invoke('log-login', {
+      body: {
+        status: input.status,
+        identity: input.identity ?? null,
+        method: input.method ?? 'password',
+        failure_reason: input.failureReason ?? null,
+        geo,
+        device: loginDeviceInfo(),
+      },
+    });
+  } catch (error) {
+    return { data: null, error };
+  }
+}

@@ -3238,3 +3238,29 @@ small {
   margin-top: 12px !important;
   letter-spacing: 0.3px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   لوحة «سجل العمليات» — تدقيق الدخول والأجهزة (المشرف العام)
+   ══════════════════════════════════════════════════════════════════ */
+.audit-stats { grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); }
+.audit-views button { display: inline-flex; align-items: center; gap: var(--space-2); }
+.audit-date { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--muted); }
+.audit-date input { padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-family: inherit; font-size: var(--text-sm); }
+.audit-empty { padding: var(--space-8); text-align: center; }
+.audit-more { display: flex; justify-content: center; padding: var(--space-4); }
+.audit-last { margin-top: var(--space-2); }
+.audit-device { display: block; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); color: var(--ink-soft); }
+.audit-modal { max-width: 780px; width: 100%; }
+.audit-modal .modal-body { max-height: 68vh; overflow-y: auto; }
+.audit-detail { margin: 0; }
+.audit-detail-row { display: grid; grid-template-columns: 200px 1fr; gap: var(--space-3); padding: 9px 0; border-bottom: 1px dashed var(--line); }
+.audit-detail-row dt { font-weight: 700; font-size: var(--text-xs); color: var(--muted); }
+.audit-detail-row dd { margin: 0; font-size: var(--text-sm); word-break: break-word; }
+.audit-detail-row dd.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; text-align: left; font-size: var(--text-xs); }
+.audit-json-title { margin: var(--space-4) 0 var(--space-2); font-size: var(--text-base); }
+.audit-json { direction: ltr; text-align: left; background: #0f172a; color: #e2e8f0; padding: var(--space-4); border-radius: 12px; font-size: var(--text-xs); line-height: 1.7; max-height: 320px; overflow: auto; }
+.audit-map-links { margin-top: var(--space-3); flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .audit-detail-row { grid-template-columns: 1fr; gap: 2px; }
+  .audit-date { flex: 1 1 45%; }
+}

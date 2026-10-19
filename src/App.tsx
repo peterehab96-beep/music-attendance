@@ -32,6 +32,7 @@ import {
   RotateCcw,
   Search,
   Settings2,
+  ShieldAlert,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -95,6 +96,7 @@ import {
   validateNationalId,
   LAW_COOLDOWN_DAYS,
   LAW_MIN_SESSIONS,
+  logLoginEvent,
   markMyLawNotificationsRead,
   type AdminScope,
   type AttendanceComplianceRow,
@@ -112,6 +114,7 @@ import { AdminAudioBeacon } from './components/admin/AdminAudioBeacon';
 import { BulkPromotionPanel } from './components/admin/BulkPromotionPanel';
 import { RepeaterReviewPanel } from './components/admin/RepeaterReviewPanel';
 import { StudentAudioReceiver } from './components/student/StudentAudioReceiver';
+import { AdminAuditLog } from './components/admin/AdminAuditLog';
 import { EnrollmentStatus } from './components/student/EnrollmentStatus';
 import { database, insforge } from './lib/insforge';
 import { readCurrentLocation, supportsPasskeys } from './lib/device';
@@ -119,7 +122,7 @@ import type { AcademicTerm, Admin, AttendanceLog, GeofenceConfig, LectureSession
 import { STATUS_LABELS, TERM_LABELS } from './lib/types';
 
 type AuthView = 'login' | 'register';
-type AdminTab = 'overview' | 'students' | 'passwords' | 'whitelist' | 'sessions' | 'grades' | 'addSubjectsQueue' | 'subjectAdmins' | 'promotion' | 'repeaters' | 'law35' | 'settings';
+type AdminTab = 'overview' | 'students' | 'passwords' | 'whitelist' | 'sessions' | 'grades' | 'addSubjectsQueue' | 'subjectAdmins' | 'promotion' | 'repeaters' | 'law35' | 'audit' | 'settings';
 type StudentTab = 'dashboard' | 'attendance' | 'addSubjects' | 'profile';
 
 const publicRoutes: Record<AuthView, string> = {
@@ -146,6 +149,7 @@ const adminRoutes: Record<AdminTab, string> = {
   promotion: '/admin/promotion',
   repeaters: '/admin/repeaters',
   law35: '/admin/law35',
+  audit: '/admin/audit',
   settings: '/admin/settings',
 };
 
@@ -172,6 +176,7 @@ function adminTabFromPath(path: string): AdminTab {
   if (path === adminRoutes.promotion) return 'promotion';
   if (path === adminRoutes.repeaters) return 'repeaters';
   if (path === adminRoutes.law35) return 'law35';
+  if (path === adminRoutes.audit) return 'audit';
   if (path === adminRoutes.settings) return 'settings';
   return 'overview';
 }
@@ -375,7 +380,17 @@ function LoginForm({ onSignedIn, notify, onRegister }: { onSignedIn: (user: User
     setBusy(true);
     const { data, error } = await signIn(email.trim(), password);
     setBusy(false);
-    if (error || !data?.user) return notify(errorMessage(error, 'تعذر تسجيل الدخول. راجع البريد وكلمة المرور.'), 'error');
+    if (error || !data?.user) {
+      // كل محاولة فاشلة تُسجَّل بالوقت والشبكة والجهاز لتمكين تتبع أي محاولة اختراق،
+      // لكن بدون طلب الموقع من شخص لم يدخل بعد.
+      const raw = errorMessage(error, 'تعذر تسجيل الدخول. راجع البريد وكلمة المرور.');
+      // رسالة الخادم لاتينية ومبهمة؛ نوضحها بالعربية ونحفظ النص التقني في السجل فقط.
+      const rejected = /invalid|credential/i.test(raw);
+      void logLoginEvent({ status: 'failed', identity: email.trim(), method: 'password', failureReason: rejected ? 'بيانات الدخول غير صحيحة' : raw, withLocation: false });
+      return notify(rejected ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : raw, 'error');
+    }
+    // سجل الدخول الكامل (الوقت/العنوان/الجهاز/الموقع) — لا يعطّل الدخول إن فشل.
+    void logLoginEvent({ status: 'success', identity: email.trim(), userId: data.user.id, method: 'password' });
     await onSignedIn(data.user as User);
     notify('مرحبًا بعودتك.', 'success');
   }
@@ -389,7 +404,7 @@ function LoginForm({ onSignedIn, notify, onRegister }: { onSignedIn: (user: User
     {helpMessage && <div className="status-alert"><div><b>تم الإرسال</b><p>{helpMessage}</p></div></div>}
     <button className="secondary-button" disabled={helpBusy}>{helpBusy ? 'جارٍ الإرسال…' : 'إرسال الطلب للإدارة'}</button>
   </form>}
-  <div className="security-note"><Fingerprint size={20} /><span><b>دخول آمن</b><small>نستخدم تشفيرًا حديثًا ولا نخزّن أي صورة شخصية.</small></span></div></>;
+  <div className="security-note"><Fingerprint size={20} /><span><b>دخول آمن ومسجَّل</b><small>نستخدم تشفيرًا حديثًا ولا نخزّن أي صورة شخصية. يُسجَّل كل دخول بالوقت والجهاز والشبكة والموقع لحماية حسابك وتتبّع أي محاولة غير مصرّح بها.</small></span></div></>;
 }
 
 
@@ -450,6 +465,7 @@ function RegisterForm({ onSignedIn, notify, onLogin }: { onSignedIn: (user: User
     if (result.error) { setBusy(false); return notify(errorMessage(result.error, 'تعذر إكمال تسجيل الطالب.'), 'error'); }
     await tryRegisterPasskey();
     await onSignedIn(signUpData.user as User);
+    void logLoginEvent({ status: 'success', identity: form.email.trim(), userId: signUpData.user.id, method: 'register' });
     setBusy(false);
     notify('تم إنشاء الحساب. سيظهر لك سجل الحضور بعد اعتماد الإدمن.', 'success');
   }
@@ -951,7 +967,7 @@ function StudentProfile({ student, user, notify }: { student: Student; user: Use
 function Detail({ label, value, ltr }: { label: string; value: string; ltr?: boolean }) { return <div className="detail"><span>{label}</span><b dir={ltr ? 'ltr' : undefined}>{value}</b></div>; }
 
 // ─── صلاحيات اللوحة: المشرف العام يرى كل شيء، وأدمن المادة يرى نطاقه فقط ───
-const SUPER_ADMIN_TABS: AdminTab[] = ['overview', 'students', 'passwords', 'whitelist', 'sessions', 'grades', 'addSubjectsQueue', 'subjectAdmins', 'promotion', 'repeaters', 'law35', 'settings'];
+const SUPER_ADMIN_TABS: AdminTab[] = ['overview', 'students', 'passwords', 'whitelist', 'sessions', 'grades', 'addSubjectsQueue', 'subjectAdmins', 'promotion', 'repeaters', 'law35', 'audit', 'settings'];
 
 /** التبويبات المسموح بها فعليًا لهذا الحساب (نفس ترتيب القائمة الأصلي). */
 function allowedAdminTabs(scope: AdminScope): AdminTab[] {
@@ -1014,6 +1030,7 @@ function AdminShell({ admin, path, navigate, notify, onLogout, theme, setTheme }
     { id: 'promotion', label: 'ترقية المنتظمين', icon: <GraduationCap size={19} /> },
     { id: 'repeaters', label: 'مراجعة الراسبين', icon: <AlertTriangle size={19} /> },
     { id: 'law35', label: 'قانون الحضور ٣٥', icon: <ClipboardList size={19} />, badge: lawDue?.due_now ?? 0 },
+    { id: 'audit', label: 'سجل العمليات', icon: <ShieldAlert size={19} /> },
     { id: 'settings', label: 'الإعدادات', icon: <Settings2 size={19} /> },
   ];
   if (!scope) return <LoadingScreen />;
@@ -1058,6 +1075,7 @@ function AdminShell({ admin, path, navigate, notify, onLogout, theme, setTheme }
         {tab === 'promotion' && <BulkPromotionPanel notify={notify} />}
         {tab === 'repeaters' && <RepeaterReviewPanel notify={notify} />}
         {tab === 'law35' && <AdminAttendanceLaw scope={scope} notify={notify} />}
+        {tab === 'audit' && (isSuper ? <AdminAuditLog notify={notify} /> : <main className="content-area"><div className="empty-panel"><div className="empty-icon"><ShieldAlert size={26} /></div><h3>سجل العمليات للمشرف العام فقط</h3><p>هذه الشاشة تعرض كل عمليات النظام وكل محاولات الدخول، ولا تُتاح لأدمن المادة.</p></div></main>)}
         {tab === 'settings' && (isSuper
           ? <AdminSettings admin={me} notify={notify} theme={theme} setTheme={setTheme} />
           : <AdminOwnSettings admin={me} scope={scope} notify={notify} onProfileSaved={(fullName) => setMe((current) => ({ ...current, full_name: fullName }))} />)}
