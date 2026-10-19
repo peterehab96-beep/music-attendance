@@ -24,6 +24,7 @@ export interface Student {
   term: AcademicTerm;
   status: StudentStatus;
   password_reset_requests_used: number;
+  password_change_direct_used?: number;
   created_at: string;
   approved_at?: string | null;
 }

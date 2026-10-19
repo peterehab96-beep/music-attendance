@@ -9,20 +9,20 @@ export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   try {
     const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-    if (!token) return json({ error: 'ÛíÑ ãÕÑÍ' }, 401);
+    if (!token) return json({ error: 'ØºÙŠØ± Ù…ØµØ±Ø­' }, 401);
     const userClient = createServerClient({ baseUrl: baseUrl(req), anonKey: Deno.env.get('ANON_KEY'), accessToken: token });
     const { data: authData } = await userClient.auth.getCurrentUser();
-    if (!authData?.user) return json({ error: 'ÌáÓÉ ÛíÑ ÕÇáÍÉ' }, 401);
+    if (!authData?.user) return json({ error: 'Ø¬Ù„Ø³Ø© ØºÙŠØ± ØµØ§Ù„Ø­Ø©' }, 401);
     
     const { session_id } = await req.json();
-    if (!session_id) return json({ error: 'ãÚÑİ ÇáÌáÓÉ ãØáæÈ' }, 400);
+    if (!session_id) return json({ error: 'Ù…Ø¹Ø±Ù Ø§Ù„Ø¬Ù„Ø³Ø© Ù…Ø·Ù„ÙˆØ¨' }, 400);
 
     const apiKey = Deno.env.get('INSFORGE_API_KEY') ?? Deno.env.get('API_KEY');
     const db = createAdminClient({ baseUrl: baseUrl(req), apiKey });
     
     // Check admin
-    const { data: isAdmin } = await db.database.rpc('is_admin', { p_user_id: authData.user.id });
-    if (!isAdmin) return json({ error: 'ÕáÇÍíÇÊ ÛíÑ ßÇİíÉ' }, 403);
+    const { data: isAdmin } = await db.database.rpc('is_super_admin', { p_user_id: authData.user.id });
+    if (!isAdmin) return json({ error: 'ØºÙŠØ± Ù…ØµØ±Ø­ â€” Ø­Ø°Ù Ø§Ù„Ø¬Ù„Ø³Ø§Øª Ù†Ù‡Ø§Ø¦ÙŠÙ‹Ø§ Ù„Ù„Ù…Ø´Ø±Ù Ø§Ù„Ø¹Ø§Ù… ÙÙ‚Ø·' }, 403);
     
     // Delete session
     const { error } = await db.database.from('lecture_sessions').delete().eq('id', session_id);
@@ -30,6 +30,6 @@ export default async function handler(req: Request) {
 
     return json({ success: true });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : 'ÎØÃ ÏÇÎáí' }, 500);
+    return json({ error: error instanceof Error ? error.message : 'Ø®Ø·Ø£ Ø¯Ø§Ø®Ù„ÙŠ' }, 500);
   }
 }

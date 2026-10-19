@@ -28,3 +28,8 @@ dummy.*
 
 # Dev scratch scripts (contain internal URLs / one-off patches)
 scratch/
+
+# Credentials / tokens never committed
+client_secrets.json
+token.pickle
+*.pickle

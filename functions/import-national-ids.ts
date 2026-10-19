@@ -18,7 +18,7 @@ export default async function handler(req: Request) {
     const apiKey = Deno.env.get('INSFORGE_API_KEY') ?? Deno.env.get('API_KEY');
     if (!apiKey) return json({ error: 'مفتاح الخادم غير مهيأ' }, 500);
     const db = createAdminClient({ baseUrl: baseUrl(req), apiKey });
-    const { data: isAdmin } = await db.database.rpc('is_admin', { p_user_id: authData.user.id });
+    const { data: isAdmin } = await db.database.rpc('is_super_admin', { p_user_id: authData.user.id });
     if (!isAdmin) return json({ error: 'غير مصرح' }, 403);
     const cleanRows = rows.map((row: { national_id?: unknown; full_name_reference?: unknown; level?: unknown }) => {
       const level = row.level === null || row.level === undefined || row.level === '' ? null : Number(row.level);

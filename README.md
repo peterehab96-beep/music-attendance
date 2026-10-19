@@ -59,6 +59,12 @@ VITE_INSFORGE_ANON_KEY=<anon-key>
 - **الدوال:** `npx @insforge/cli functions deploy <name> --file functions/<file>.ts`
 - **قاعدة البيانات:** `node scripts/deploy-database.mjs`
 
+## الأداء واختبار الحمل
+
+- `node scripts/load-test.mjs` — يقيس قدرة الكتابة في قاعدة البيانات (آمن، يستخدم جدولًا مؤقتًا يُحذف).
+- `node scripts/load-test.mjs --api --confirm --students=200 [--retries=2]` — يقيس تزامن تسجيلات الحضور عبر HTTP، ينشئ مستخدمين مؤقتين وينظّفهم تلقائيًا.
+- تدفق تسجيل الحضور موحّد في استدعاءين RPC (`check_in_prepare` + `check_in_commit`) بدل ~10 استعلامات، مع إعادة محاولة أسّية في العميل.
+
 ## الأمان
 
 - RLS مفعل على كل الجداول — الطالب لا يرى درجاته السرية إطلاقًا

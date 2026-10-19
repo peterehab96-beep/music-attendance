@@ -23,7 +23,7 @@ export default async function handler(req: Request) {
     const db = createAdminClient({ baseUrl: baseUrl(req), apiKey });
 
     // Is the caller an admin? (the RPC re-checks this, this is an early guard)
-    const { data: isAdmin } = await db.database.rpc('is_admin', { p_user_id: authData.user.id });
+    const { data: isAdmin } = await db.database.rpc('is_super_admin', { p_user_id: authData.user.id });
     if (!isAdmin) return json({ error: 'غير مصرح' }, 403);
 
     // The RPC verifies admin status again, frees the national id, clears the

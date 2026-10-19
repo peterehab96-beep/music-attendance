@@ -129,7 +129,6 @@ const PrintableAttendanceSheetInner: React.FC<PrintableAttendanceSheetProps> = (
                 <th className="col-status">حالة الطالب</th>
                 <th className="col-narrow">أعمال السنة</th>
                 <th className="col-narrow">التطبيقي</th>
-                <th className="col-narrow">تحريري</th>
                 <th className="col-notes">ملاحظات</th>
               </tr>
             </thead>
@@ -143,13 +142,12 @@ const PrintableAttendanceSheetInner: React.FC<PrintableAttendanceSheetProps> = (
                     {student.grade !== undefined && student.grade !== null ? student.grade : ''}
                   </td>
                   <td className="col-narrow text-center"></td>
-                  <td className="col-narrow text-center"></td>
                   <td className="col-notes"></td>
                 </tr>
               ))}
               {sheetStudents.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center print-empty-row">
+                  <td colSpan={6} className="text-center print-empty-row">
                     لا توجد بيانات طلاب مسجلة لهذه المادة
                   </td>
                 </tr>

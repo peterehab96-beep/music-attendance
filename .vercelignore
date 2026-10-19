@@ -1,0 +1,23 @@
+# نشر الواجهة فقط: لا تُرفع الوسائط ولا الأسرار ولا ملفات الباكند مع الموقع.
+# (اتجاهل الملفات المذكورة أدناه أثناء رفع المشروع إلى الاستضافة — البناء البعيد يحتاج src/ و public/ فقط.)
+/*.mp4
+/*.jpg
+/*.jpeg
+/*.png
+/*.webp
+/*.vtt
+/*.py
+/*.pickle
+/*.tmp
+/client_secrets.json
+/token.pickle
+/scratch/
+/scripts/
+/functions/
+/insforge/
+/google-apps-script/
+/test.ts
+/test2.ts
+/AGENTS.md
+/README.md
+/PROJECT_HANDOFF.md
